@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive B2C Travel KPI Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f0f2f5; /* Light grey background like image */
+            --card-bg: #ffffff;
+            --primary-color: #0052cc; /* Deep Blue like image title */
+            --secondary-color: #00a3bf; /* Teal for accents */
+            --accent-color: #ffab00; /* Amber/Yellow accent */
+            --text-color: #172b4d; /* Darker text */
+            --text-muted: #6b778c; /* Greyer muted text */
+            --heading-font: 'Poppins', sans-serif;
+            --body-font: 'Poppins', sans-serif;
+            --shadow: 0 4px 8px rgba(0, 0, 0, 0.06); /* Softer shadow */
+            --border-radius: 6px; /* Slightly less rounded corners */
+            --success-color: #36b37e; /* Green like image */
+            --danger-color: #de350b; /* Red like image */
+        }
+
+        /* --- Base Styles (Keep As Is) --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--body-font); background-color: var(--bg-color); color: var(--text-color); line-height: 1.6; padding: 20px; }
+        .dashboard-container { max-width: 1600px; margin: 0 auto; }
+
+        /* --- Header Styles (Keep As Is) --- */
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding: 12px 20px; background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); animation: fadeInDown 0.5s ease-out; }
+        .dashboard-header h1 { color: var(--primary-color); font-family: var(--heading-font); font-size: 1.6em; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .dashboard-header h1 i { font-size: 0.9em; background-color: var(--primary-color); color: white; padding: 6px; border-radius: 50%; line-height: 1; }
+        .time-selector label { margin-right: 8px; font-weight: 600; color: var(--text-muted); font-size: 0.9em; }
+        .time-selector select { padding: 6px 10px; border: 1px solid #dfe1e6; border-radius: 4px; font-family: var(--body-font); font-size: 0.9em; cursor: pointer; background-color: #fff; }
+
+        /* --- KPI Card Styles (Keep As Is) --- */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 25px; }
+        .kpi-card { background-color: var(--card-bg); padding: 18px; border-radius: var(--border-radius); box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, box-shadow 0.2s ease; animation: fadeInUp 0.5s ease-out forwards; opacity: 0; animation-delay: calc(var(--card-index) * 0.06s); border: 1px solid #f4f5f7; }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08); }
+        .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .kpi-title { font-size: 0.85em; color: var(--text-muted); font-weight: 500; }
+        .kpi-icon { font-size: 1.2em; padding: 8px; border-radius: 50%; color: #fff; display: flex; justify-content: center; align-items: center; width: 36px; height: 36px; }
+        .icon-gbv { background-color: #0052cc; } .icon-revenue { background-color: #00a3bf; } .icon-bookings { background-color: #6554c0; } .icon-roi { background-color: #36b37e; } .icon-cac { background-color: #de350b; } .icon-ltv { background-color: #ffab00; } .icon-ltv-cac { background-color: #ff8b00; } .icon-lookbook { background-color: #00b8d9; } .icon-nps { background-color: #6554c0; } .icon-market { background-color: #0065ff; }
+        .kpi-value { font-size: 1.8em; font-weight: 600; color: var(--text-color); margin-bottom: 6px; line-height: 1.1; letter-spacing: -0.5px; }
+        .kpi-trend { font-size: 0.8em; display: flex; align-items: center; }
+        .kpi-trend .fas { margin-right: 4px; font-size: 0.9em; }
+        .trend-up { color: var(--success-color); } .trend-down { color: var(--danger-color); } .trend-neutral { color: var(--text-muted); }
+
+        /* --- Chart Container Styles (Keep As Is) --- */
+        .chart-container { background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius); box-shadow: var(--shadow); animation: fadeInUp 0.6s ease-out forwards; opacity: 0; border: 1px solid #f4f5f7; height: 350px; display: flex; flex-direction: column; }
+        .chart-container h3 { font-family: var(--heading-font); color: var(--primary-color); margin-bottom: 15px; font-size: 1.1em; text-align: center; font-weight: 600; }
+        .chart-canvas-container { flex-grow: 1; position: relative; }
+        .chart-container canvas { max-height: 100%; }
+
+        /* --- Main Charts Grid (2 Columns - Keep As Is) --- */
+        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px; /* Keep margin below this grid */ }
+        /* Apply animation delay to direct children of this grid */
+        .charts-grid > .chart-container { animation-delay: 0.5s; }
+
+        /* --- !! NEW: Secondary Charts Grid (2 Columns) !! --- */
+        .secondary-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Also 2 columns */
+            gap: 20px;
+            margin-bottom: 25px; /* Add margin below this grid */
+        }
+        /* Apply slightly later animation delay to direct children of this grid */
+         .secondary-charts-grid > .chart-container {
+             animation-delay: 0.55s; /* Stagger slightly after main charts */
+         }
+
+        /* --- Funnel Styles (Keep As Is) --- */
+        .funnel-container { background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius); box-shadow: var(--shadow); animation: fadeInUp 0.6s ease-out forwards; opacity: 0; animation-delay: 0.6s; border: 1px solid #f4f5f7; }
+        .funnel-container h3 { font-family: var(--heading-font); color: var(--primary-color); margin-bottom: 15px; font-size: 1.1em; text-align: center; font-weight: 600; }
+        .funnel-stage { background-color: var(--secondary-color); color: white; padding: 8px 12px; margin: 4px auto; text-align: center; border-radius: 3px; position: relative; transition: width 0.4s ease-out; max-width: 95%; box-shadow: 0 2px 4px rgba(0,0,0,0.1) inset; }
+        .funnel-stage:not(:first-child)::before { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 8px solid var(--bg-color); z-index: 1; }
+        .funnel-label { font-weight: 500; font-size: 0.8em; display: block; margin-bottom: 2px; }
+        .funnel-value { font-size: 1em; font-weight: 600; }
+
+        /* --- Animations (Keep As Is) --- */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Responsive Styles (Adjusted for new grid) --- */
+        @media (max-width: 1400px) {
+            .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        }
+        @media (max-width: 992px) {
+             .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+             .charts-grid, .secondary-charts-grid { grid-template-columns: 1fr; /* Stack both chart grids */ }
+             .chart-container { height: 300px; }
+         }
+         @media (max-width: 768px) {
+            body { padding: 15px;}
+            .dashboard-header { flex-direction: column; align-items: flex-start; }
+            .dashboard-header h1 { margin-bottom: 10px; font-size: 1.4em; }
+            .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+             .kpi-value { font-size: 1.5em;}
+             .kpi-title { font-size: 0.8em;}
+             .kpi-trend { font-size: 0.75em;}
+         }
+        @media (max-width: 576px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .chart-container { height: 280px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <!-- Header (No Change) -->
+        <div class="dashboard-header">
+            <h1><i class="fas fa-tachometer-alt"></i> B2C Travel KPI Dashboard</h1>
+            <div class="time-selector">
+                <label for="timePeriod">Select Period:</label>
+                <select id="timePeriod">
+                    <option value="monthly">Last Month</option>
+                    <option value="quarterly">Last Quarter</option>
+                    <option value="ytd" selected>Year-to-Date</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- KPI Cards Grid (No Change) -->
+        <div class="dashboard-grid">
+             <!-- Row 1 -->
+            <div class="kpi-card" style="--card-index: 1;"> <div class="kpi-header"> <span class="kpi-title">Gross Bookings (GBV)</span> <span class="kpi-icon icon-gbv"><i class="fas fa-dollar-sign"></i></span> </div> <div class="kpi-value" id="gbvValue">$0</div> <div class="kpi-trend" id="gbvTrend"><i class="fas"></i> <span>vs Prev. Period</span></div> </div>
+            <div class="kpi-card" style="--card-index: 2;"> <div class="kpi-header"> <span class="kpi-title">Revenue</span> <span class="kpi-icon icon-revenue"><i class="fas fa-money-bill-wave"></i></span> </div> <div class="kpi-value" id="revenueValue">$0</div> <div class="kpi-trend" id="revenueTrend"><i class="fas"></i> <span>vs Prev. Period</span></div> </div>
+            <div class="kpi-card" style="--card-index: 3;"> <div class="kpi-header"> <span class="kpi-title">Bookings (Room Nights/Tix)</span> <span class="kpi-icon icon-bookings"><i class="fas fa-plane-departure"></i></span> </div> <div class="kpi-value" id="bookingsValue">0</div> <div class="kpi-trend" id="bookingsTrend"><i class="fas"></i> <span>vs Prev. Period</span></div> </div>
+            <div class="kpi-card" style="--card-index: 4;"> <div class="kpi-header"> <span class="kpi-title">Marketing ROI</span> <span class="kpi-icon icon-roi"><i class="fas fa-chart-line"></i></span> </div> <div class="kpi-value" id="roiValue">0%</div> <div class="kpi-trend" id="roiTrend"><i class="fas"></i> <span>Target: 500%</span></div> </div>
+            <div class="kpi-card" style="--card-index: 5;"> <div class="kpi-header"> <span class="kpi-title">Customer Acq. Cost (CAC)</span> <span class="kpi-icon icon-cac"><i class="fas fa-user-minus"></i></span> </div> <div class="kpi-value" id="cacValue">$0</div> <div class="kpi-trend trend-down" id="cacTrend"><i class="fas"></i> <span>vs Prev. Period</span></div> </div>
+            <!-- Row 2 -->
+            <div class="kpi-card" style="--card-index: 6;"> <div class="kpi-header"> <span class="kpi-title">Customer Lifetime Value (CLV)</span> <span class="kpi-icon icon-ltv"><i class="fas fa-user-plus"></i></span> </div> <div class="kpi-value" id="ltvValue">$0</div> <div class="kpi-trend trend-up" id="ltvTrend"><i class="fas"></i> <span>Target: $X</span></div> </div>
+            <div class="kpi-card" style="--card-index: 7;"> <div class="kpi-header"> <span class="kpi-title">LTV / CAC Ratio</span> <span class="kpi-icon icon-ltv-cac"><i class="fas fa-balance-scale"></i></span> </div> <div class="kpi-value" id="ltvCacRatio">0x</div> <div class="kpi-trend" id="ltvCacTrend"><i class="fas"></i> <span>Target: >3x</span></div> </div>
+            <div class="kpi-card" style="--card-index: 8;"> <div class="kpi-header"> <span class="kpi-title">Look-to-Book Ratio</span> <span class="kpi-icon icon-lookbook"><i class="fas fa-search-dollar"></i></span> </div> <div class="kpi-value" id="lookBookRatio">0%</div> <div class="kpi-trend" id="lookBookTrend"><i class="fas"></i> <span>vs Prev. Period</span></div> </div>
+            <div class="kpi-card" style="--card-index: 9;"> <div class="kpi-header"> <span class="kpi-title">Net Promoter Score (NPS)</span> <span class="kpi-icon icon-nps"><i class="fas fa-smile-beam"></i></span> </div> <div class="kpi-value" id="npsValue">0</div> <div class="kpi-trend" id="npsTrend"><i class="fas"></i> <span>Target: >50</span></div> </div>
+            <div class="kpi-card" style="--card-index: 10;"> <div class="kpi-header"> <span class="kpi-title">Market Share (Est.)</span> <span class="kpi-icon icon-market"><i class="fas fa-chart-pie"></i></span> </div> <div class="kpi-value" id="marketShareValue">0%</div> <div class="kpi-trend" id="marketShareTrend"><i class="fas"></i> <span>vs Last Year</span></div> </div>
+        </div>
+
+        <!-- Main Charts Grid (First 4 Charts) -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>GBV & Revenue Trend</h3>
+                <div class="chart-canvas-container"><canvas id="gbvRevenueChart"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <h3>Marketing Channel ROI</h3>
+                 <div class="chart-canvas-container"><canvas id="marketingRoiChart"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <h3>LTV vs CAC Comparison</h3>
+                <div class="chart-canvas-container"><canvas id="ltvCacChart"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <h3>NPS Distribution</h3>
+                <div class="chart-canvas-container"><canvas id="npsChart"></canvas></div>
+            </div>
+            <!-- Market Share and Look-to-Book moved -->
+        </div>
+
+        <!-- !! NEW: Secondary Charts Grid (Market Share & Look-to-Book) !! -->
+        <div class="secondary-charts-grid">
+             <div class="chart-container">
+                <h3>Market Share Overview</h3>
+                 <div class="chart-canvas-container"><canvas id="marketShareChart"></canvas></div>
+            </div>
+             <div class="chart-container">
+                 <h3>Look-to-Book Ratio Trend</h3>
+                 <div class="chart-canvas-container"><canvas id="lookBookChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Sales Funnel Visualization (No Change) -->
+        <div class="funnel-container">
+             <h3>Simplified Sales Funnel</h3>
+            <div class="funnel-stage" id="funnelAwareness"> <span class="funnel-label">Awareness (Visits)</span> <span class="funnel-value">0</span> </div>
+            <div class="funnel-stage" id="funnelConsideration"> <span class="funnel-label">Consideration (Searches)</span> <span class="funnel-value">0</span> </div>
+            <div class="funnel-stage" id="funnelBooking"> <span class="funnel-label">Booking (Conversions)</span> <span class="funnel-value">0</span> </div>
+            <div class="funnel-stage" id="funnelLoyalty"> <span class="funnel-label">Loyalty (Repeat Bookings)</span> <span class="funnel-value">0</span> </div>
+        </div>
+
+        <!-- Footer (No Change) -->
+         <footer> <p style="text-align: center; font-size: 0.9em; color: var(--text-muted); margin-top: 30px;"> Note: Data displayed is illustrative dummy data for demonstration purposes. </p> </footer>
+
+    </div>
+
+    <script>
+        // --- !! FIX: Moved generateRandomTrend outside generateDummyData !! ---
+        const generateRandomTrend = (base, variance, positiveOnly = false) => {
+            const trend = base + (Math.random() - 0.5) * 2 * variance * base;
+            return positiveOnly ? Math.max(0, trend) : trend;
+        };
+
+        // --- Dummy Data Generation Function (Keep As Is) ---
+        function generateDummyData(period) {
+            let labels, gbvData, revenueData, bookingsData, lookBookData;
+            let currentData = {}; let prevData = {};
+            // Use Intl.NumberFormat
+            const currencyFormatter = (value, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency, maximumFractionDigits: 0 }).format(value);
+            const numberFormatter = (value) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
+            const percentFormatter = (value, decimals = 1) => new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value / 100);
+
+            let baseGBV, baseBookings, baseCAC, baseLTV, baseLookBook, baseNPS, baseMarketShare;
+            let marketingSpendMultiplier, funnelMultiplier;
+
+            if (period === 'monthly') { /* ... data assignments ... */
+                labels = ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'];
+                baseGBV = 500000; baseBookings = 1100; baseCAC = 45; baseLTV = 250; baseLookBook = 1.8; baseNPS = 38; baseMarketShare = 5.5;
+                marketingSpendMultiplier = 0.12; funnelMultiplier = 0.3;
+            } else if (period === 'quarterly') { /* ... data assignments ... */
+                labels = ['Month 1', 'Month 2', 'Month 3'];
+                 baseGBV = 1600000; baseBookings = 3500; baseCAC = 48; baseLTV = 270; baseLookBook = 2.0; baseNPS = 42; baseMarketShare = 6.0;
+                 marketingSpendMultiplier = 0.11; funnelMultiplier = 1;
+            } else { /* YTD data assignments ... */
+                labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+                 baseGBV = 7000000; baseBookings = 15000; baseCAC = 50; baseLTV = 275; baseLookBook = 2.2; baseNPS = 44; baseMarketShare = 6.1;
+                 marketingSpendMultiplier = 0.10; funnelMultiplier = 4;
+            }
+
+            // Generate time series data
+            gbvData = labels.map(() => generateRandomTrend(baseGBV / labels.length, 0.15, true));
+            revenueData = gbvData.map(g => g * generateRandomTrend(0.185, 0.03, true));
+            bookingsData = gbvData.map(g => g / generateRandomTrend(baseGBV/baseBookings, 0.1));
+            lookBookData = labels.map(() => generateRandomTrend(baseLookBook, 0.1, true));
+
+            currentData = { /* ... calculations ... */
+                gbv: gbvData.reduce((a, b) => a + b, 0),
+                revenue: revenueData.reduce((a, b) => a + b, 0),
+                bookings: bookingsData.reduce((a, b) => a + b, 0),
+                marketingSpend: baseGBV * marketingSpendMultiplier * generateRandomTrend(1, 0.1, true),
+                cac: generateRandomTrend(baseCAC, 0.08, true),
+                ltv: generateRandomTrend(baseLTV, 0.08, true),
+                lookBook: lookBookData.reduce((a,b) => a+b, 0) / lookBookData.length,
+                npsScore: generateRandomTrend(baseNPS, 0.05),
+                marketShare: generateRandomTrend(baseMarketShare, 0.02, true),
+                funnel: { awareness: 300000 * funnelMultiplier * generateRandomTrend(1, 0.1), consideration: 60000 * funnelMultiplier * generateRandomTrend(1, 0.12), booking: baseBookings, loyalty: baseBookings * 0.15 * generateRandomTrend(1, 0.2) }
+            };
+             // Calculate NPS distribution
+             const npsDetractorsPercent = Math.max(0, (50 - currentData.npsScore) / 2) / 100; const npsPromotersPercent = Math.max(0, (50 + currentData.npsScore) / 2) / 100; const npsPassivesPercent = Math.max(0, 1 - npsDetractorsPercent - npsPromotersPercent); const totalRespondents = 1000 * funnelMultiplier;
+             currentData.nps = { promoters: totalRespondents * npsPromotersPercent, passives: totalRespondents * npsPassivesPercent, detractors: totalRespondents * npsDetractorsPercent };
+
+            prevData = { /* ... assignments ... */
+                gbv: baseGBV * 0.9, revenue: baseGBV * 0.9 * 0.18, bookings: baseBookings * 0.9, lookBook: baseLookBook * 0.98, nps: baseNPS * 0.95, marketShare: baseMarketShare * 0.98, cac: baseCAC * 1.05, ltv: baseLTV * 0.95
+            };
+
+            // Calculate derived metrics
+            currentData.roi = currentData.marketingSpend > 0 ? ((currentData.revenue - currentData.marketingSpend) / currentData.marketingSpend) * 100 : 0;
+            currentData.ltvCacRatio = currentData.cac > 0 ? currentData.ltv / currentData.cac : 0;
+
+            return { labels, gbvData, revenueData, bookingsData, lookBookData, current: currentData, prev: prevData, formatCurrency: currencyFormatter, formatNumber: numberFormatter, formatPercent: percentFormatter };
+        }
+
+
+        // --- Chart Instances & Init/Update Function (Keep As Is) ---
+        const charts = {};
+        function initOrUpdateChart(chartId, options) {
+             const canvas = document.getElementById(chartId); if (!canvas) return; const ctx = canvas.getContext('2d');
+             if (charts[chartId]) { charts[chartId].data = options.data; charts[chartId].options = options.options || charts[chartId].options; charts[chartId].update(); }
+             else { charts[chartId] = new Chart(ctx, { type: options.type, data: options.data, options: options.options }); }
+         }
+
+        // --- Update Dashboard Function (Keep As Is - Error Source Removed) ---
+        function updateDashboard(period) {
+            const data = generateDummyData(period); // Calls the function with generateRandomTrend now accessible
+
+            // Update KPI Cards (Keep As Is)
+            document.getElementById('gbvValue').textContent = data.formatCurrency(data.current.gbv);
+            document.getElementById('revenueValue').textContent = data.formatCurrency(data.current.revenue);
+            document.getElementById('bookingsValue').textContent = data.formatNumber(data.current.bookings);
+            document.getElementById('roiValue').textContent = data.formatPercent(data.current.roi);
+            document.getElementById('cacValue').textContent = data.formatCurrency(data.current.cac);
+            document.getElementById('ltvValue').textContent = data.formatCurrency(data.current.ltv);
+            document.getElementById('ltvCacRatio').textContent = `${data.current.ltvCacRatio.toFixed(1)}x`;
+            document.getElementById('lookBookRatio').textContent = data.formatPercent(data.current.lookBook);
+            document.getElementById('npsValue').textContent = data.formatNumber(data.current.npsScore);
+             document.getElementById('marketShareValue').textContent = data.formatPercent(data.current.marketShare);
+
+            // Update Trends (Keep As Is)
+            const targets = { roi: 500, ltv: data.prev.ltv * 1.1, ltvCac: 3, nps: 50 };
+            updateTrend('gbvTrend', data.current.gbv, data.prev.gbv, data.formatPercent);
+            updateTrend('revenueTrend', data.current.revenue, data.prev.revenue, data.formatPercent);
+            updateTrend('bookingsTrend', data.current.bookings, data.prev.bookings, data.formatPercent);
+            updateTrend('roiTrend', data.current.roi, targets.roi, data.formatPercent, true);
+            updateTrend('cacTrend', data.current.cac, data.prev.cac, data.formatPercent, false, true);
+            updateTrend('ltvTrend', data.current.ltv, targets.ltv, data.formatPercent, true, false, data.formatCurrency);
+            updateTrend('ltvCacTrend', data.current.ltvCacRatio, targets.ltvCac, data.formatPercent, true);
+            updateTrend('lookBookTrend', data.current.lookBook, data.prev.lookBook, data.formatPercent);
+            updateTrend('npsTrend', data.current.npsScore, targets.nps, data.formatPercent, true);
+            updateTrend('marketShareTrend', data.current.marketShare, data.prev.marketShare, data.formatPercent);
+
+
+            // --- Update Charts (Calls initOrUpdateChart - Keep As Is) ---
+            // GBV & Revenue Chart
+             initOrUpdateChart('gbvRevenueChart', { type: 'line', data: { labels: data.labels, datasets: [ { label: 'GBV', data: data.gbvData, borderColor: 'rgba(0, 82, 204, 1)', backgroundColor: 'rgba(0, 82, 204, 0.1)', fill: true, yAxisID: 'y', tension: 0.3 }, { label: 'Revenue', data: data.revenueData, borderColor: 'rgba(0, 163, 191, 1)', backgroundColor: 'rgba(0, 163, 191, 0.1)', fill: true, yAxisID: 'y', tension: 0.3 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: value => data.formatCurrency(value, 'USD').slice(0, -3) + 'k' } }, x: {} }, plugins: { tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${data.formatCurrency(context.raw)}` } } } } });
+             // Marketing ROI Chart
+              initOrUpdateChart('marketingRoiChart', { type: 'bar', data: { labels: ['SEM', 'SEO', 'Social', 'Affil.', 'Email'], datasets: [{ label: 'ROI', data: [data.current.roi * 0.45, data.current.roi * 0.25, data.current.roi * 0.1, data.current.roi * 0.15, data.current.roi * 0.05], backgroundColor: ['rgba(0, 82, 204, 0.8)', 'rgba(0, 163, 191, 0.8)', 'rgba(101, 84, 192, 0.8)', 'rgba(54, 179, 126, 0.8)', 'rgba(255, 171, 0, 0.8)'] }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: value => data.formatPercent(value, 0) } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (context) => `ROI: ${data.formatPercent(context.raw)}` } } } } });
+              // LTV vs CAC Chart
+              initOrUpdateChart('ltvCacChart', { type: 'bar', data: { labels: ['LTV', 'CAC'], datasets: [{ label: 'Value', data: [data.current.ltv, data.current.cac], backgroundColor: ['rgba(255, 171, 0, 0.8)', 'rgba(222, 53, 11, 0.8)'] }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { callback: value => data.formatCurrency(value) } } }, plugins: { legend: { display: false } } } });
+              // NPS Chart
+              initOrUpdateChart('npsChart', { type: 'doughnut', data: { labels: ['Promoters', 'Passives', 'Detractors'], datasets: [{ label: 'NPS Distribution', data: [data.current.nps.promoters, data.current.nps.passives, data.current.nps.detractors], backgroundColor: ['rgba(54, 179, 126, 0.8)', 'rgba(255, 171, 0, 0.8)', 'rgba(222, 53, 11, 0.8)'], hoverOffset: 4, borderColor: 'var(--card-bg)', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } } } } });
+
+             // !! FIX: Now generateRandomTrend is accessible here !!
+             const competitorA = generateRandomTrend(30, 0.05, true);
+             const competitorB = generateRandomTrend(25, 0.05, true);
+             const otherShare = 100 - data.current.marketShare - competitorA - competitorB;
+             // Market Share Chart
+               initOrUpdateChart('marketShareChart', { type: 'pie', data: { labels: ['Our Brand', 'Comp. A', 'Comp. B', 'Other'], datasets: [{ label: 'Market Share %', data: [data.current.marketShare, competitorA, competitorB, Math.max(0, otherShare)], backgroundColor: ['rgba(0, 82, 204, 0.9)', 'rgba(107, 119, 140, 0.7)', 'rgba(0, 163, 191, 0.8)', 'rgba(223, 225, 230, 0.7)'], hoverOffset: 4, borderColor: 'var(--card-bg)', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } } } } });
+               // Look-to-Book Chart
+               initOrUpdateChart('lookBookChart', { type: 'line', data: { labels: data.labels, datasets: [{ label: 'Look-to-Book Ratio (%)', data: data.lookBookData, borderColor: 'rgba(101, 84, 192, 1)', backgroundColor: 'rgba(101, 84, 192, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, ticks: { callback: value => data.formatPercent(value, 1) } } }, plugins: { legend: { display: false } } } });
+
+              // Update Funnel Visualization (Keep As Is)
+             updateFunnelStage('funnelAwareness', data.current.funnel.awareness, data.current.funnel.awareness, data.formatNumber);
+             updateFunnelStage('funnelConsideration', data.current.funnel.consideration, data.current.funnel.awareness, data.formatNumber);
+             updateFunnelStage('funnelBooking', data.current.funnel.booking, data.current.funnel.awareness, data.formatNumber);
+             updateFunnelStage('funnelLoyalty', data.current.funnel.loyalty, data.current.funnel.awareness, data.formatNumber);
+        }
+
+       // --- Helper Function to Update Trend Indicators (Keep As Is) ---
+        function updateTrend(elementId, currentValue, previousValue, formatter, compareToTarget = false, lowerIsBetter = false, targetFormatter = null) {
+            const trendElement = document.getElementById(elementId); if (!trendElement) return; const icon = trendElement.querySelector('i'); const text = trendElement.querySelector('span'); let diff, trendClass = 'trend-neutral', iconClass = 'fas fa-minus', displayValue; targetFormatter = targetFormatter || formatter;
+             if (compareToTarget) { diff = currentValue - previousValue; displayValue = `Target: ${targetFormatter(previousValue).replace('.0%', '%')}`; } else { diff = currentValue - previousValue; const percentageDiff = previousValue !== 0 ? Math.abs(diff / previousValue) * 100 : 0; displayValue = `${formatter(percentageDiff, 1)} vs Prev. Period`; }
+             if (diff > 0.001) { trendClass = lowerIsBetter ? 'trend-down' : 'trend-up'; iconClass = 'fas fa-arrow-up'; } else if (diff < -0.001) { trendClass = lowerIsBetter ? 'trend-up' : 'trend-down'; iconClass = 'fas fa-arrow-down'; } text.textContent = displayValue; trendElement.className = 'kpi-trend'; if (trendClass) { trendElement.classList.add(trendClass); } icon.className = iconClass;
+         }
+
+        // --- Helper Function to Update Funnel Stages (Keep As Is) ---
+        function updateFunnelStage(elementId, value, baseValue, formatter) {
+            const stageElement = document.getElementById(elementId); if (!stageElement) return; const valueElement = stageElement.querySelector('.funnel-value'); valueElement.textContent = formatter(value); const percentage = baseValue > 0 ? (value / baseValue) * 100 : 0; const minWidth = 10; const maxWidth = 90; stageElement.style.width = `${Math.min(maxWidth, Math.max(minWidth, percentage))}%`;
+        }
+
+        // --- Event Listener & Initial Load (Keep As Is) ---
+        document.getElementById('timePeriod').addEventListener('change', (event) => { updateDashboard(event.target.value); });
+        document.addEventListener('DOMContentLoaded', () => { updateDashboard(document.getElementById('timePeriod').value); });
+
+    </script>
+
+</body>
+</html>
